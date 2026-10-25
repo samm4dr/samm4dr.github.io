@@ -1,0 +1,64 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrape Booking.com Hotel Data: Prices, Reviews and Competitor Rates</title>
+<meta name="description" content="Scrape Booking.com Hotel Data: Prices, Reviews and Competitor Rates">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Scrape Booking.com Hotel Data: Prices, Reviews and Competitor Rates</h1>
+
+<p>Hotel rate parity, competitor pricing, review mining — Booking.com data feeds revenue management and travel intelligence. Direct scraping hits CAPTCHAs fast; Apify actors handle it. Here's the pipeline.</p>
+<blockquote><p>🤖 <strong>Try it live</strong> — chat with a Poe bot that generates the exact pipeline for your market: <a href="https://poe.com/leadlistgenerator">Lead List Generator</a> · <a href="https://poe.com/jobpostingsminer">Job Postings Miner</a> · <a href="https://poe.com/amazonproductminer">Amazon Product Miner</a> · <a href="https://poe.com/serpranktracker">SERP Rank Tracker</a> · <a href="https://poe.com/socialleadfinder">Social Lead Finder</a></p></blockquote>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — Booking.com actors for hotels, prices, reviews. Free monthly credits.</li><li><strong>Python</strong> — daily rate snapshots, review mining.</li></ul>
+<h2>Step 1 — Token</h2>
+<p><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> → Settings → Integrations → <code>export APIFY_TOKEN=...</code></p>
+<h2>Step 2 — Pull hotels in a destination</h2>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/santamaria-automations~booking-com-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+    &quot;destination&quot;: &quot;Miami&quot;,
+    &quot;checkIn&quot;: &quot;2026-11-15&quot;,
+    &quot;checkOut&quot;: &quot;2026-11-17&quot;,
+    &quot;adults&quot;: 2,
+    &quot;maxItems&quot;: 200
+  }&#x27;</code></pre>
+<p>Fields: <code>name</code>, <code>address</code>, <code>price</code>, <code>currency</code>, <code>reviewScore</code>, <code>reviewCount</code>, <code>stars</code>, <code>url</code>, <code>imageUrls</code>.</p>
+<h2>Step 3 — Price-gap analysis</h2>
+<pre><code>from apify_client import ApifyClient
+
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+run = client.actor(&quot;santamaria-automations/booking-com-scraper&quot;).call(run_input={
+    &quot;destination&quot;: &quot;Miami Beach&quot;,
+    &quot;checkIn&quot;: &quot;2026-11-15&quot;, &quot;checkOut&quot;: &quot;2026-11-17&quot;,
+    &quot;adults&quot;: 2, &quot;maxItems&quot;: 300,
+})
+
+hotels = []
+for h in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    price, score = h.get(&quot;price&quot;), h.get(&quot;reviewScore&quot;) or 0
+    if price and score:
+        hotels.append((score, price, h[&quot;name&quot;]))
+
+# high rating + low price = value leaders to monitor/beat
+for s, p, n in sorted(hotels, key=lambda x: -x[0]/x[1]):
+    print(f&quot;{s:&gt;4.1f}★ ${p:&gt;5.0f} {n[:55]}&quot;)</code></pre>
+<h2>The plays</h2>
+<ul><li><strong>Hoteliers</strong> — daily competitor rates → revenue management without a $300/month tool.</li><li><strong>Travel affiliates</strong> — price-drop feeds for deal newsletters and booking pages.</li><li><strong>Review intel</strong> — <code>zhorex/booking-reviews-scraper</code> on your property AND competitors → what guests praise/complain about = your amenity + marketing roadmap.</li></ul>
+<h2>Useful actors</h2>
+<pre><code>| Actor | Job | Users |
+|---|---|---|
+| `santamaria-automations/booking-com-scraper` | Hotel search + rates | 1.2k |
+| `rl1987/booking-api-scraper` | Prices, room rates, availability | 336 |
+| `zhorex/booking-reviews-scraper` | Full review text + scores | 49 |</code></pre>
+<h2>More resources</h2>
+<ul><li><a href="https://github.com/samm4dr/apify-skills">apify-skills</a> — run this from a prompt: <code>npx skills add g4dr/apify-skills</code></li><li><a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a></li><li>Free credits: <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify signup</a></li></ul>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> — skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
