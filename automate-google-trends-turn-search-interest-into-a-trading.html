@@ -1,0 +1,57 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Automate Google Trends: Turn Search Interest Into a Trading Signal</title>
+<meta name="description" content="Automate Google Trends: Turn Search Interest Into a Trading Signal">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Automate Google Trends: Turn Search Interest Into a Trading Signal</h1>
+
+<p>Google Trends only shows you 5 terms at a time and no bulk export for serious monitoring. The <code>apify/google-trends-scraper</code> (16k users) turns Trends into an API — batch keywords, historical data, regional breakdowns. Here's the pipeline for content timing, niche research, and trend arbitrage.</p>
+<blockquote><p>🤖 <strong>Try it live</strong> — chat with a Poe bot that generates the exact pipeline for your keywords: <a href="https://poe.com/serpranktracker">SERP Rank Tracker</a> · <a href="https://poe.com/leadlistgenerator">Lead List Generator</a> · <a href="https://poe.com/jobpostingsminer">Job Postings Miner</a> · <a href="https://poe.com/amazonproductminer">Amazon Product Miner</a> · <a href="https://poe.com/socialleadfinder">Social Lead Finder</a></p></blockquote>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — <code>apify/google-trends-scraper</code> handles batching + export. Free monthly credits.</li><li><strong>Python</strong> — interest-over-time → alerts.</li></ul>
+<h2>Step 1 — Token</h2>
+<p><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> → Settings → Integrations → <code>export APIFY_TOKEN=...</code></p>
+<h2>Step 2 — Batch keyword interest</h2>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/apify~google-trends-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+    &quot;searchTerms&quot;: [&quot;ai agent&quot;, &quot;claude code&quot;, &quot;cursor ide&quot;],
+    &quot;timeRange&quot;: &quot;today 12-m&quot;,
+    &quot;geo&quot;: &quot;US&quot;,
+    &quot;isMultiple&quot;: true
+  }&#x27;</code></pre>
+<p>Output: per-term time series + regional interest + related queries (<code>rising</code> = breakouts).</p>
+<h2>Step 3 — Detect breakouts</h2>
+<pre><code>from apify_client import ApifyClient
+
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+run = client.actor(&quot;apify/google-trends-scraper&quot;).call(run_input={
+    &quot;searchTerms&quot;: [&quot;your_niche_term&quot;], &quot;timeRange&quot;: &quot;today 3-m&quot;, &quot;isMultiple&quot;: True,
+})
+
+for item in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    for q in item.get(&quot;relatedQueries&quot;, {}).get(&quot;rising&quot;, []):
+        print(&quot;BREAKOUT query:&quot;, q[&quot;query&quot;], &quot;| +&quot;, q.get(&quot;value&quot;), &quot;%&quot;)</code></pre>
+<p><code>rising</code> queries marked "Breakout" = demand spiking right now — write the article, launch the product, buy the keyword before everyone else.</p>
+<h2>The plays</h2>
+<ul><li><strong>Content sites</strong> — rising queries → articles published before the wave = free traffic.</li><li><strong>E-commerce</strong> — regional interest map = where to test ads first.</li><li><strong>Seasonality</strong> — 5-year data → know exactly when demand peaks (e.g. "standing desk" spikes every January).</li></ul>
+<h2>Useful actors</h2>
+<pre><code>| Actor | Job | Users |
+|---|---|---|
+| `apify/google-trends-scraper` | Batch trends, regions, related queries | 16.2k |
+| `data_xplorer/google-trends-fast-scraper` | Fast trend pulls | 4.8k |
+| `agenscrape/google-trends-scraper` | Interest/regions/queries | 1.4k |</code></pre>
+<p>Combine with <code>apify/google-autocomplete-scraper</code> → keyword ideas → trends validation → SERP scrape (<code>apify/google-search-scraper</code>) → full demand pipeline on <a href="https://console.apify.com/sign-up?fpr=dx06p">free credits</a>.</p>
+<h2>More resources</h2>
+<ul><li><a href="https://github.com/samm4dr/apify-skills">apify-skills</a> — <code>apify-seo-serp</code> skill: trends → SERP from a prompt</li><li><a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a></li></ul>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> — skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
