@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrape Polymarket Odds: Build a Prediction Market Tracker (and Find Arbitrage)</title>
+<meta name="description" content="Scrape Polymarket Odds: Build a Prediction Market Tracker (and Find Arbitrage)">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Scrape Polymarket Odds: Build a Prediction Market Tracker (and Find Arbitrage)</h1>
+
+<p>Prediction markets move billions and their odds are data gold — elections, sports, crypto, weather. Polymarket's public API is rate-limited and thin on history/order books. This tutorial shows the Apify-actor pipeline: live odds, whale trades, and <strong>Kalshi-vs-Polymarket arbitrage detection</strong>.</p>
+<blockquote><p>🤖 <strong>Try it live</strong> — chat with a Poe bot that generates the exact pipeline for the markets you track: <a href="https://poe.com/leadlistgenerator">Lead List Generator</a> · <a href="https://poe.com/jobpostingsminer">Job Postings Miner</a> · <a href="https://poe.com/amazonproductminer">Amazon Product Miner</a> · <a href="https://poe.com/serpranktracker">SERP Rank Tracker</a> · <a href="https://poe.com/socialleadfinder">Social Lead Finder</a></p></blockquote>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — dedicated prediction-market actors, some with 800+ users. Free monthly credits included.</li><li><strong>Python</strong> — odds → CSV, alerts, dashboards.</li></ul>
+<h2>Step 1 — Get your API token</h2>
+<ol><li><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> (free credits included)</li><li>Console → Settings → Integrations → copy your API token</li><li><code>export APIFY_TOKEN=your_token</code></li></ol>
+<h2>Step 2 — Pull live market odds</h2>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/scrapemint~polymarket-market-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{&quot;category&quot;: &quot;politics&quot;, &quot;maxItems&quot;: 100}&#x27;</code></pre>
+<p>Fields per market: <code>question</code>, <code>outcomes</code> (YES/NO prices), <code>volume</code>, <code>liquidity</code>, <code>endDate</code>, <code>url</code>.</p>
+<h2>Step 3 — Detect mispriced markets</h2>
+<pre><code>from apify_client import ApifyClient
+
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+run = client.actor(&quot;scrapemint/polymarket-market-monitor&quot;).call(run_input={
+    &quot;category&quot;: &quot;crypto&quot;, &quot;maxItems&quot;: 200
+})
+
+for m in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    prices = [o.get(&quot;price&quot;, 0) for o in m.get(&quot;outcomes&quot;, [])]
+    # binary market where YES + NO != $1 = inefficiency
+    if prices and abs(sum(prices) - 1.0) &gt; 0.03:
+        print(&quot;GAP:&quot;, m[&quot;question&quot;][:70], &quot;| prices:&quot;, prices,
+              &quot;| vol:&quot;, m.get(&quot;volume&quot;))</code></pre>
+<h2>The arbitrage play</h2>
+<p><a href="https://apify.com/congism/polymarket-kalshi-arb-finder"><code>congism/polymarket-kalshi-arb-finder</code></a> (800+ users — proven demand) compares the same event on both platforms. If Kalshi prices YES at $0.52 while Polymarket prices NO at $0.45, buying both locks ~3% risk-free. The actor outputs the pairs — you execute.</p>
+<h2>Whale watching</h2>
+<p><a href="https://apify.com/jy-labs/polymarket-whale-tracker"><code>jy-labs/polymarket-whale-tracker</code></a> surfaces the largest positions. When a wallet that called the last three elections moves $50k, that's a signal worth having <em>before</em> the odds move.</p>
+<h2>Useful actors</h2>
+<pre><code>| Actor | Job |
+|---|---|
+| `scrapemint/polymarket-market-monitor` | Live odds by category (242 users) |
+| `congism/polymarket-kalshi-arb-finder` | Cross-platform arbitrage pairs (835 users) |
+| `jy-labs/polymarket-whale-tracker` | Largest positions / whale wallets |
+| `parsebird/polymarket-scraper` | Trader leaderboard data |
+| `logiover/polymarket-events-odds-ai-scraper` | Events + odds API output |</code></pre>
+<h2>Who uses this</h2>
+<ul><li><strong>Traders</strong> — arb alerts, momentum on whale entries</li><li><strong>Journalists/analysts</strong> — prediction odds beat polls for breaking stories</li><li><strong>Data sellers</strong> — cleaned odds history = a sellable dataset</li></ul>
+<h2>Automation</h2>
+<p>Schedule the monitor hourly in Apify Console → diff snapshots → odds-movement alerts to Slack/Telegram. Cost: a few cents per day on <a href="https://console.apify.com/sign-up?fpr=dx06p">free credits</a>.</p>
+<h2>More resources</h2>
+<ul><li><a href="https://github.com/samm4dr/apify-skills">apify-skills</a> — Agent Skills that let Claude Code / Cursor run these pipelines from a prompt: <code>npx skills add g4dr/apify-skills</code></li><li><a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a> — curated scraping tools, proxies and actors</li></ul>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> — skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
