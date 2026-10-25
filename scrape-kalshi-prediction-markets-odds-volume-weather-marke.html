@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrape Kalshi Prediction Markets: Odds, Volume &amp; Weather Markets via API</title>
+<meta name="description" content="Scrape Kalshi Prediction Markets: Odds, Volume &amp; Weather Markets via API">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Scrape Kalshi Prediction Markets: Odds, Volume &amp; Weather Markets via API</h1>
+
+<p>Kalshi is the regulated US prediction market — election odds, Fed decisions, economic prints, even <strong>weather markets</strong>. Its public API exists but is rate-limited and awkward for bulk history. This tutorial shows the Apify-actor pipeline: markets, order books, and cross-platform arbitrage with Polymarket.</p>
+<blockquote><p>🤖 <strong>Try it live</strong> — chat with a Poe bot that generates the exact pipeline for your use case: <a href="https://poe.com/leadlistgenerator">Lead List Generator</a> · <a href="https://poe.com/jobpostingsminer">Job Postings Miner</a> · <a href="https://poe.com/amazonproductminer">Amazon Product Miner</a> · <a href="https://poe.com/serpranktracker">SERP Rank Tracker</a> · <a href="https://poe.com/socialleadfinder">Social Lead Finder</a></p></blockquote>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — Kalshi actors for markets, odds, volume, profiles. Free monthly credits included.</li><li><strong>Python</strong> — 20 lines to a live odds feed.</li></ul>
+<h2>Step 1 — Get your API token</h2>
+<ol><li><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> (free credits included)</li><li>Console → Settings → Integrations → copy your API token</li><li><code>export APIFY_TOKEN=your_token</code></li></ol>
+<h2>Step 2 — Pull market data</h2>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/scrapemint~kalshi-prediction-market-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{&quot;category&quot;: &quot;economics&quot;, &quot;maxItems&quot;: 100}&#x27;</code></pre>
+<p>Fields per market: <code>ticker</code>, <code>title</code>, <code>yesPrice</code>, <code>noPrice</code>, <code>volume</code>, <code>openInterest</code>, <code>closeTime</code>, <code>url</code>.</p>
+<h2>Step 3 — Build an odds feed</h2>
+<pre><code>from apify_client import ApifyClient
+
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+run = client.actor(&quot;scrapemint/kalshi-prediction-market-scraper&quot;).call(run_input={
+    &quot;category&quot;: &quot;economics&quot;, &quot;maxItems&quot;: 200
+})
+
+for m in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    yes = m.get(&quot;yesPrice&quot;) or 0
+    print(f&quot;{m.get(&#x27;title&#x27;, &#x27;&#x27;)[:65]:65s} YES={yes:&gt;4.2f} vol={m.get(&#x27;volume&#x27;, 0)}&quot;)</code></pre>
+<p>Schedule it in Apify Console → snapshots → price-movement alerts.</p>
+<h2>The arbitrage angle</h2>
+<p>Kalshi and Polymarket price the same events — differently. <a href="https://apify.com/congism/polymarket-kalshi-arb-finder"><code>congism/polymarket-kalshi-arb-finder</code></a> (835 users) does the cross-platform matching and flags YES+NO &lt; $1.00 pairs. Both are regulated/legit venues, so the spread is real.</p>
+<h2>Niche gold: weather markets</h2>
+<p><a href="https://apify.com/bigdavidson/kalshi-weather-markets"><code>bigdavidson/kalshi-weather-markets</code></a> (282 users) pulls temperature/rain odds per city — energy traders, event insurers, and quants pay for this feed. Build it once, sell the dataset.</p>
+<h2>Useful actors</h2>
+<pre><code>| Actor | Job |
+|---|---|
+| `scrapemint/kalshi-prediction-market-scraper` | Markets + live event odds (115 users) |
+| `congism/polymarket-kalshi-arb-finder` | Kalshi↔Polymarket arbitrage pairs |
+| `bigdavidson/kalshi-weather-markets` | Temperature &amp; rain odds API (282 users) |
+| `pixflor/kalshi-markets-scraper` | Markets, odds, volume, order books |
+| `saswave/kalshi-profile-scraper` | Trader profile data |</code></pre>
+<h2>Who uses this</h2>
+<ul><li><strong>Traders</strong> — arb alerts + order-book snapshots before market-moving events</li><li><strong>Quants/researchers</strong> — odds history beats polling data for event probability studies</li><li><strong>Data sellers</strong> — cleaned odds/volume feeds = a sellable product</li></ul>
+<h2>Automation</h2>
+<p>Hourly schedule → diff → alert when a market's YES moves &gt;5¢. A few cents a day on <a href="https://console.apify.com/sign-up?fpr=dx06p">free credits</a>.</p>
+<h2>More resources</h2>
+<ul><li><a href="https://github.com/samm4dr/apify-skills">apify-skills</a> — Agent Skills so Claude Code / Cursor runs this from a prompt: <code>npx skills add g4dr/apify-skills</code></li><li><a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a> — curated scraping tools and actors</li><li>Related: <a href="https://github.com/samm4dr/polymarket-odds-tracker">polymarket-odds-tracker</a> — the Polymarket side of the arb pair</li></ul>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> — skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
