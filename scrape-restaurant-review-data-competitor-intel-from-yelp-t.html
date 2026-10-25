@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrape Restaurant &amp; Review Data: Competitor Intel from Yelp, TripAdvisor and Maps</title>
+<meta name="description" content="Scrape Restaurant &amp; Review Data: Competitor Intel from Yelp, TripAdvisor and Maps">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Scrape Restaurant &amp; Review Data: Competitor Intel from Yelp, TripAdvisor and Maps</h1>
+<p>Review sites are a free focus group: what customers love, what they hate, and which competitor is bleeding customers. Here's how to pull reviews + business data at scale.</p>
+<blockquote><p>🤖 <strong>Try it live</strong> — free Poe bots that generate the exact pipeline for your use case: <a href="https://poe.com/leadlistgenerator">Lead List Generator</a> · <a href="https://poe.com/jobpostingsminer">Job Postings Miner</a> · <a href="https://poe.com/amazonproductminer">Amazon Product Miner</a> · <a href="https://poe.com/serpranktracker">SERP Rank Tracker</a> · <a href="https://poe.com/socialleadfinder">Social Lead Finder</a></p></blockquote>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — actors for Google Maps reviews, Yelp, TripAdvisor. Free monthly credits.</li><li><strong>Python</strong> — reviews → sentiment, CSV, alerts.</li></ul>
+<h2>Step 1 — Token</h2>
+<p><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> → Settings → Integrations → API token.</p>
+<h2>Step 2 — Competitor's reviews, all of them</h2>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/compass~google-maps-reviews-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+    &quot;startUrls&quot;: [{&quot;url&quot;: &quot;https://www.google.com/maps/place/Competitor+Name&quot;}],
+    &quot;maxReviews&quot;: 500,
+    &quot;reviewsSort&quot;: &quot;newest&quot;
+  }&#x27;</code></pre>
+<p>Fields: <code>text</code>, <code>stars</code>, <code>publishedAtDate</code>, <code>responseFromOwnerText</code>, <code>reviewerName</code>.</p>
+<h2>Step 3 — Pain extraction</h2>
+<pre><code>from apify_client import ApifyClient
+
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+run = client.actor(&quot;compass/google-maps-reviews-scraper&quot;).call(run_input={
+    &quot;startUrls&quot;: [{&quot;url&quot;: &quot;https://www.google.com/maps/place/Competitor&quot;}],
+    &quot;maxReviews&quot;: 500,
+})
+
+complaints = {}
+for r in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    if (r.get(&quot;stars&quot;) or 5) &lt;= 2:
+        for w in [&quot;wait&quot;, &quot;price&quot;, &quot;service&quot;, &quot;cold&quot;, &quot;rude&quot;, &quot;booking&quot;]:
+            if w in (r.get(&quot;text&quot;) or &quot;&quot;).lower():
+                complaints[w] = complaints.get(w, 0) + 1
+
+print(sorted(complaints.items(), key=lambda x: -x[1]))</code></pre>
+<h2>The plays</h2>
+<ul><li><strong>Restaurants/agencies</strong> — competitor's 1-2★ patterns = your marketing angles ("no 40-min waits").</li><li><strong>Reputation alert</strong> — daily run on YOUR listing → catch bad reviews while they're fresh, respond fast.</li><li><strong>Franchise scouting</strong> — ratings + review velocity per location = which market is underserved.</li></ul>
+<p>Yelp (<code>apify/yelp-scraper</code>) and TripAdvisor (<code>maxcopell/tripadvisor</code>) actors work the same way — swap the URL.</p>
+<p>More: <a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a>. Skills: <code>npx skills add g4dr/apify-skills</code> (<a href="https://github.com/samm4dr/apify-skills">repo</a>).</p>
+<p><em>Whose reviews are you reading first?</em></p>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> — skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
