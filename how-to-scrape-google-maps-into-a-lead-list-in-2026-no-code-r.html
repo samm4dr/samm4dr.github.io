@@ -1,0 +1,67 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>How to Scrape Google Maps into a Lead List in 2026 (No Code Required)</title>
+<meta name="description" content="How to Scrape Google Maps into a Lead List in 2026 (No Code Required)">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>How to Scrape Google Maps into a Lead List in 2026 (No Code Required)</h1>
+<p>You need a list of plumbers in Manchester, dentists in Miami, or roofers in Lyon — with phones, emails, and websites. Doing it by hand takes days. Writing a scraper takes hours... until Google rate-limits you into CAPTCHA hell.</p>
+<p>Here&#x27;s the 2026 way: run a maintained <strong>Apify actor</strong> that handles proxies, pagination, and anti-blocking — then let your AI agent do the plumbing.</p>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — actor marketplace with ready-made Google Maps scrapers. Free tier includes monthly credits — enough to test this end-to-end.</li><li><strong>Your AI agent</strong> (Claude Code, Cursor, Codex...) — runs the pipeline via a skill that knows the actor inputs.</li></ul>
+<p>No proxies to configure. No headless browser tuning.</p>
+<h2>Step 1 — Get your API token</h2>
+<ol><li><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> (free credits included)</li><li>Console → Settings → Integrations → copy your API token</li><li><code>export APIFY_TOKEN=your_token</code></li></ol>
+<h2>Step 2 — Run the lead-extraction actor</h2>
+<p>The <code>lukaskrivka/google-maps-with-contact-details</code> actor doesn&#x27;t just grab businesses — it visits each website and extracts <strong>emails and social profiles</strong> automatically:</p>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/lukaskrivka~google-maps-with-contact-details/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+    &quot;searchStringsArray&quot;: [&quot;dentist&quot;],
+    &quot;locationQuery&quot;: &quot;Miami, FL&quot;,
+    &quot;maxCrawledPlacesPerSearch&quot;: 100,
+    &quot;language&quot;: &quot;en&quot;
+  }&#x27;</code></pre>
+<p>You get back a JSON array with <code>title</code>, <code>phone</code>, <code>website</code>, <code>emails</code>, <code>address</code>, <code>totalScore</code>, <code>reviewsCount</code>, <code>categoryName</code>.</p>
+<h2>Step 3 — Clean lead CSV with Python</h2>
+<pre><code>from apify_client import ApifyClient
+import csv
+
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+run = client.actor(&quot;lukaskrivka/google-maps-with-contact-details&quot;).call(run_input={
+    &quot;searchStringsArray&quot;: [&quot;plumber&quot;],
+    &quot;locationQuery&quot;: &quot;Austin, TX&quot;,
+    &quot;maxCrawledPlacesPerSearch&quot;: 200,
+})
+
+with open(&quot;prospects.csv&quot;, &quot;w&quot;, newline=&quot;&quot;) as f:
+    w = csv.writer(f)
+    w.writerow([&quot;business&quot;, &quot;phone&quot;, &quot;email&quot;, &quot;website&quot;, &quot;rating&quot;, &quot;reviews&quot;])
+    for p in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+        if p.get(&quot;phone&quot;) or p.get(&quot;emails&quot;):
+            w.writerow([
+                p[&quot;title&quot;], p.get(&quot;phone&quot;, &quot;&quot;),
+                (p.get(&quot;emails&quot;) or [&quot;&quot;])[0],
+                p.get(&quot;website&quot;, &quot;&quot;), p.get(&quot;totalScore&quot;, &quot;&quot;),
+                p.get(&quot;reviewsCount&quot;, &quot;&quot;),
+            ])</code></pre>
+<p>Dedupe by <code>website</code> or <code>phone</code>, filter for <code>totalScore &gt;= 3.5</code> — and you have a clean outreach list.</p>
+<h2>Bonus: let your agent run it for you</h2>
+<p>I packaged this (plus 7 other scraping patterns — jobs, Amazon, social, SERP) as Agent Skills:</p>
+<pre><code>npx skills add g4dr/apify-skills</code></pre>
+<p>After installing, tell Claude Code <em>&quot;get me all roofers in Birmingham&quot;</em> — it picks the right actor, builds the run input, and hands you the data. Full repo: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a>.</p>
+<p>For the bigger picture (proxies, headless browsers, niche actors), I maintain an <a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a> list.</p>
+<h2>Compliance note</h2>
+<p>Google Maps data is public business info — but respect GDPR and outreach laws (CAN-SPAM, opt-outs). Scrape public data, don&#x27;t republish personal info, and honor platform ToS.</p>
+<hr>
+<p><em>Questions? Drop them in the comments — happy to share run inputs for specific niches.</em></p>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> · skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
