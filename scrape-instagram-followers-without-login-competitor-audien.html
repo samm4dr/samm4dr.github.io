@@ -1,0 +1,58 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrape Instagram Followers Without Login: Competitor Audiences as Lead Lists</title>
+<meta name="description" content="Scrape Instagram Followers Without Login: Competitor Audiences as Lead Lists">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Scrape Instagram Followers Without Login: Competitor Audiences as Lead Lists</h1>
+
+<p>Instagram's API won't give you follower lists — but follower lists are exactly what agencies and sellers want: who follows your competitor = who should follow you. This tutorial uses Apify actors (17k+ users on the top one) to pull followers, following, and profile data at scale — no cookies, no login.</p>
+<blockquote><p>🤖 <strong>Try it live</strong> — chat with a Poe bot that generates the exact pipeline for your niche: <a href="https://poe.com/socialleadfinder">Social Lead Finder</a> · <a href="https://poe.com/leadlistgenerator">Lead List Generator</a> · <a href="https://poe.com/jobpostingsminer">Job Postings Miner</a> · <a href="https://poe.com/amazonproductminer">Amazon Product Miner</a> · <a href="https://poe.com/serpranktracker">SERP Rank Tracker</a></p></blockquote>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — Instagram actors that handle rate limits + proxies. Free monthly credits.</li><li><strong>Python</strong> — followers → CSV → enrichment.</li></ul>
+<h2>Step 1 — Token</h2>
+<p><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> → Settings → Integrations → <code>export APIFY_TOKEN=...</code></p>
+<h2>Step 2 — Pull followers of any account</h2>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/apify~instagram-followers-following-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{&quot;username&quot;: &quot;competitor_account&quot;, &quot;operation&quot;: &quot;followers&quot;, &quot;resultsLimit&quot;: 5000}&#x27;</code></pre>
+<p>Fields: <code>username</code>, <code>fullName</code>, <code>biography</code>, <code>externalUrl</code>, <code>followerCount</code>, <code>isBusinessAccount</code>, <code>verified</code>.</p>
+<h2>Step 3 — Filter for leads</h2>
+<pre><code>from apify_client import ApifyClient
+
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+run = client.actor(&quot;apify/instagram-followers-following-scraper&quot;).call(run_input={
+    &quot;username&quot;: &quot;big_competitor&quot;, &quot;operation&quot;: &quot;followers&quot;, &quot;resultsLimit&quot;: 5000,
+})
+
+leads = []
+for u in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    bio = (u.get(&quot;biography&quot;) or &quot;&quot;).lower()
+    if any(k in bio for k in [&quot;founder&quot;, &quot;owner&quot;, &quot;ceo&quot;, &quot;shop&quot;, &quot;est.&quot;]) \
+            or u.get(&quot;isBusinessAccount&quot;):
+        leads.append(u[&quot;username&quot;])
+
+print(len(leads), &quot;business followers = warm audience&quot;)</code></pre>
+<h2>The plays</h2>
+<ul><li><strong>Agencies</strong> — competitor followers who run businesses = your prospect list for SMM/branding pitches.</li><li><strong>Dropshippers</strong> — niche-page followers = lookalike audience for ads and DM outreach.</li><li><strong>Growth checks</strong> — scheduled follower-count runs (<code>apify/instagram-followers-count-scraper</code>, 16k users) = growth velocity intel per account.</li></ul>
+<h2>Useful actors</h2>
+<pre><code>| Actor | Job | Users |
+|---|---|---|
+| `apify/instagram-followers-following-scraper` | Follower/following lists | 4.5k |
+| `scraping_solutions/instagram-scraper-followers-following-no-cookies` | No-login follower pull | 17.9k |
+| `apify/instagram-followers-count-scraper` | Fast count snapshots | 16.4k |
+| `apify/instagram-profile-scraper` | Full profile data | huge |</code></pre>
+<h2>Automation</h2>
+<p>Weekly scheduled run → diff follower lists → who's new, who left. Combine with <code>vdrmota/contact-info-scraper</code> on <code>externalUrl</code> → emails for outreach.</p>
+<h2>More resources</h2>
+<ul><li><a href="https://github.com/samm4dr/apify-skills">apify-skills</a> — <code>npx skills add g4dr/apify-skills</code>, runs this from a prompt</li><li><a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a> — curated tools + actors</li><li>Free credits: <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify signup</a></li></ul>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> — skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
