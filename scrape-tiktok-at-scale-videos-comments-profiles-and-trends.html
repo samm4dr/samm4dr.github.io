@@ -1,0 +1,55 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrape TikTok at Scale: Videos, Comments, Profiles and Trends</title>
+<meta name="description" content="Scrape TikTok at Scale: Videos, Comments, Profiles and Trends">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Scrape TikTok at Scale: Videos, Comments, Profiles and Trends</h1>
+
+<p>TikTok's API is a walled garden with research-only access. The most-used scraper on Apify (<code>clockworks/tiktok-scraper</code>) has <strong>348k users</strong> for a reason: marketers, trend analysts, and UGC agencies all need the data. Here's the pipeline — videos, comments, profiles, hashtag trends.</p>
+<blockquote><p>🤖 <strong>Try it live</strong> — chat with a Poe bot that generates the exact pipeline for your niche: <a href="https://poe.com/socialleadfinder">Social Lead Finder</a> · <a href="https://poe.com/leadlistgenerator">Lead List Generator</a> · <a href="https://poe.com/jobpostingsminer">Job Postings Miner</a> · <a href="https://poe.com/amazonproductminer">Amazon Product Miner</a> · <a href="https://poe.com/serpranktracker">SERP Rank Tracker</a></p></blockquote>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — the Clockworks TikTok suite, battle-tested by 300k+ users. Free monthly credits.</li><li><strong>Python</strong> — trend detection, comment mining, creator data.</li></ul>
+<h2>Step 1 — Token</h2>
+<p><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> → Settings → Integrations → <code>export APIFY_TOKEN=...</code></p>
+<h2>Step 2 — Hashtag / search scraping</h2>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{&quot;hashtags&quot;: [&quot;skincareroutine&quot;], &quot;resultsPerPage&quot;: 100, &quot;shouldDownloadVideos&quot;: false}&#x27;</code></pre>
+<p>Fields: <code>text</code>, <code>authorMeta.name</code>, <code>diggCount</code>, <code>shareCount</code>, <code>playCount</code>, <code>createTime</code>, <code>videoUrl</code>, <code>webVideoUrl</code>.</p>
+<h2>Step 3 — Spot what's going viral</h2>
+<pre><code>from apify_client import ApifyClient
+import datetime
+
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+run = client.actor(&quot;clockworks/tiktok-scraper&quot;).call(run_input={
+    &quot;hashtags&quot;: [&quot;your_niche_hashtag&quot;], &quot;resultsPerPage&quot;: 200,
+})
+
+for v in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    plays = v.get(&quot;playCount&quot;, 0)
+    age_h = (datetime.datetime.now().timestamp() - v[&quot;createTime&quot;]) / 3600
+    velocity = plays / max(age_h, 1)
+    if velocity &gt; 10000:  # &gt;10k plays/hour = going viral NOW
+        print(&quot;VIRAL:&quot;, v[&quot;text&quot;][:60], &quot;|&quot;, plays, &quot;plays in&quot;, int(age_h), &quot;h&quot;)</code></pre>
+<h2>The plays</h2>
+<ul><li><strong>UGC agencies</strong> — pull a creator's catalog (<code>clockworks/tiktok-profile-scraper</code>), sort by views → their best hooks.</li><li><strong>Trend jacking</strong> — daily hashtag runs → catch trends at &lt;48h old, before saturation.</li><li><strong>Comments = voice of customer</strong> — <code>clockworks/tiktok-comments-scraper</code> (48k users) on viral videos in your niche → objections, wants, language.</li><li><strong>Lead gen</strong> — bios with emails/links → contact-info enrichment.</li></ul>
+<h2>Useful actors</h2>
+<pre><code>| Actor | Job | Users |
+|---|---|---|
+| `clockworks/tiktok-scraper` | Videos by hashtag/search/user | 348k |
+| `clockworks/free-tiktok-scraper` | Free-tier extractor | 59.7k |
+| `clockworks/tiktok-profile-scraper` | Creator catalogs | 56.8k |
+| `clockworks/tiktok-comments-scraper` | Comment mining | 48.8k |</code></pre>
+<h2>More resources</h2>
+<ul><li><a href="https://github.com/samm4dr/apify-skills">apify-skills</a> — <code>apify-social-scraper</code> skill runs TikTok pipelines from a prompt</li><li><a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a> — curated tools</li><li>Free credits: <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify signup</a></li></ul>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> — skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
