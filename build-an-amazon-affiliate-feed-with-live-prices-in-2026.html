@@ -1,0 +1,66 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Build an Amazon Affiliate Feed with Live Prices in 2026</title>
+<meta name="description" content="Build an Amazon Affiliate Feed with Live Prices in 2026">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Build an Amazon Affiliate Feed with Live Prices in 2026</h1>
+<p>Static prices kill affiliate conversions. A &quot;best standing desks&quot; table that says $299 while Amazon shows $349? Your reader bounces. Live data converts — here&#x27;s how to build a self-updating product feed with Apify actors.</p>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — <code>apify/amazon-crawler</code> handles Amazon&#x27;s anti-bot wall. Free credits to start.</li><li><strong>Nightly schedule</strong> — fresh prices every morning, zero maintenance.</li></ul>
+<h2>Step 1 — Token</h2>
+<p><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> → Settings → Integrations → API token → <code>export APIFY_TOKEN=...</code></p>
+<h2>Step 2 — Scrape ASINs in batch</h2>
+<pre><code>from apify_client import ApifyClient
+
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+asins = [&quot;B0ABC12345&quot;, &quot;B0DEF67890&quot;, &quot;B0GHI11223&quot;]
+
+run = client.actor(&quot;apify/amazon-crawler&quot;).call(run_input={
+    &quot;productUrls&quot;: [{&quot;url&quot;: f&quot;https://www.amazon.com/dp/{a}&quot;} for a in asins],
+    &quot;proxyCountry&quot;: &quot;AUTO_SELECT_PROXY_COUNTRY&quot;,
+})
+
+for item in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    print(item[&quot;asin&quot;], item[&quot;title&quot;], item.get(&quot;price&quot;), item.get(&quot;inStock&quot;))</code></pre>
+<p>Fields: <code>asin</code>, <code>title</code>, <code>price</code>, <code>listPrice</code>, <code>stars</code>, <code>reviewsCount</code>, <code>inStock</code>, <code>thumbnailImage</code>, <code>url</code>.</p>
+<h2>Step 3 — Scheduled snapshots → live table</h2>
+<pre><code>import json, os
+
+DB = &quot;prices.json&quot;
+current = {}
+for item in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    current[item[&quot;asin&quot;]] = {
+        &quot;price&quot;: item.get(&quot;price&quot;),
+        &quot;stock&quot;: item.get(&quot;inStock&quot;),
+        &quot;stars&quot;: item.get(&quot;stars&quot;),
+    }
+
+old = json.load(open(DB)) if os.path.exists(DB) else {}
+for asin, p in current.items():
+    if asin in old and p[&quot;price&quot;] and old[asin][&quot;price&quot;]:
+        drop = (old[asin][&quot;price&quot;] - p[&quot;price&quot;]) / old[asin][&quot;price&quot;]
+        if drop &gt; 0.10:
+            print(f&quot;PRICE DROP {asin}: {old[asin][&#x27;price&#x27;]} -&gt; {p[&#x27;price&#x27;]}&quot;)
+
+json.dump(current, open(DB, &quot;w&quot;))</code></pre>
+<p>Put the actor on a daily schedule in Apify Console → this script runs via cron/Actions → your comparison pages always show today&#x27;s price.</p>
+<h2>Step 4 — Reviews for content angles</h2>
+<p><code>junglee/amazon-reviews-scraper</code> with <code>filterByRating: &quot;critical&quot;</code> pulls the worst reviews first — exactly what you need for &quot;pros &amp; cons&quot; sections that readers trust:</p>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/junglee~amazon-reviews-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{&quot;productUrls&quot;: [{&quot;url&quot;: &quot;https://www.amazon.com/dp/B0EXAMPLE&quot;}], &quot;maxReviews&quot;: 100, &quot;filterByRating&quot;: &quot;critical&quot;}&#x27;</code></pre>
+<h2>Pro tips</h2>
+<ul><li><code>proxyCountry</code> must match the marketplace (US → .com, DE → .de) or data comes back wrong/blocked.</li><li>Batch ASINs in one run; re-run only failures.</li><li>Pair prices with your Associates tag in the outbound URL — <code>?tag=yourtag-20</code>.</li></ul>
+<p>More tools on <a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a>. Agent users: <code>npx skills add g4dr/apify-skills</code> — the <code>apify-amazon-products</code> skill does this end-to-end (<a href="https://github.com/samm4dr/apify-skills">repo</a>).</p>
+<p><em>What niche are you building a feed for?</em></p>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> · skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
