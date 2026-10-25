@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Turn Any Website into Clean Markdown for Your LLM (RAG Pipeline)</title>
+<meta name="description" content="Turn Any Website into Clean Markdown for Your LLM (RAG Pipeline)">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Turn Any Website into Clean Markdown for Your LLM (RAG Pipeline)</h1>
+<p>Feeding an LLM raw HTML is how you burn tokens on nav bars and cookie banners. The correct move: crawl the site → clean markdown → embed. Here&#x27;s the pipeline with one Apify actor.</p>
+<h2>Why markdown for RAG</h2>
+<ul><li>~5-10x fewer tokens than HTML</li><li>Preserves structure (headings, lists, code) that embeddings need</li><li>Docs sites, help centers, blogs → ready for your vector DB</li></ul>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — <code>apify/website-content-crawler</code>: full-site crawl → markdown/text. Free credits included.</li><li>Your vector DB / embedding pipeline downstream.</li></ul>
+<h2>Step 1 — Token</h2>
+<p><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> → Settings → Integrations → <code>export APIFY_TOKEN=...</code></p>
+<h2>Step 2 — Crawl a docs site</h2>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/apify~website-content-crawler/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+    &quot;startUrls&quot;: [{&quot;url&quot;: &quot;https://docs.example.com&quot;}],
+    &quot;maxCrawlDepth&quot;: 2,
+    &quot;outputFormats&quot;: [&quot;markdown&quot;]
+  }&#x27;</code></pre>
+<p>Each dataset item: <code>url</code>, <code>title</code>, <code>markdown</code>, <code>text</code> — chunked-ready.</p>
+<h2>Step 3 — Straight to embeddings</h2>
+<pre><code>from apify_client import ApifyClient
+from openai import OpenAI
+
+apify = ApifyClient(&quot;APIFY_TOKEN&quot;)
+oai = OpenAI()
+
+run = apify.actor(&quot;apify/website-content-crawler&quot;).call(run_input={
+    &quot;startUrls&quot;: [{&quot;url&quot;: &quot;https://docs.stripe.com&quot;}],
+    &quot;maxCrawlDepth&quot;: 1,
+    &quot;outputFormats&quot;: [&quot;markdown&quot;],
+})
+
+for page in apify.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    md = page.get(&quot;markdown&quot;, &quot;&quot;)
+    if len(md) &lt; 200:
+        continue
+    emb = oai.embeddings.create(input=md[:8000], model=&quot;text-embedding-3-small&quot;)
+    # -&gt; upsert (page[&quot;url&quot;], emb.data[0].embedding, md) into your vector DB
+    print(&quot;embedded:&quot;, page[&quot;url&quot;], len(md), &quot;chars&quot;)</code></pre>
+<h2>Decision guide</h2>
+<ul><li>Docs/blog for LLM → <code>website-content-crawler</code> (this pipeline)</li><li>Structured data extraction → <code>apify/cheerio-scraper</code> or store actor for that site</li><li>Cloudflare-heavy → <code>apify/puppeteer-scraper</code></li></ul>
+<h2>Cost caps</h2>
+<p><code>maxCrawlDepth</code> + <code>maxPagesPerCrawl</code> + <code>maxConcurrency</code> — test on 10-20 pages before the full crawl. A docs site (100 pages) costs cents.</p>
+<p>More extraction tools: <a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a>. If you code with AI agents: <code>npx skills add g4dr/apify-skills</code> — the <code>apify-web-scraper</code> skill runs this pipeline from a prompt (<a href="https://github.com/samm4dr/apify-skills">repo</a>).</p>
+<p><em>What site are you feeding your LLM?</em></p>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> · skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
