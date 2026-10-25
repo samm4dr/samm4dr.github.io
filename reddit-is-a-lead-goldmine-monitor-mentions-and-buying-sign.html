@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reddit Is a Lead Goldmine: Monitor Mentions and Buying Signals at Scale</title>
+<meta name="description" content="Reddit Is a Lead Goldmine: Monitor Mentions and Buying Signals at Scale">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Reddit Is a Lead Goldmine: Monitor Mentions and Buying Signals at Scale</h1>
+<p>Somewhere on Reddit right now, someone is writing "looking for a tool that does X" — and your competitor is answering first. Reddit's own search is weeks-stale garbage. Here's the real-time pipeline.</p>
+<blockquote><p>🤖 <strong>Try it live</strong> — free Poe bots that generate the exact pipeline for your use case: <a href="https://poe.com/leadlistgenerator">Lead List Generator</a> · <a href="https://poe.com/jobpostingsminer">Job Postings Miner</a> · <a href="https://poe.com/amazonproductminer">Amazon Product Miner</a> · <a href="https://poe.com/serpranktracker">SERP Rank Tracker</a> · <a href="https://poe.com/socialleadfinder">Social Lead Finder</a></p></blockquote>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — Reddit scraper actors: posts, comments, subreddits, user profiles. Free credits monthly.</li><li><strong>Keyword triggers</strong> — intent phrases, not brand names.</li></ul>
+<h2>Step 1 — Token</h2>
+<p><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> → Settings → Integrations → API token.</p>
+<h2>Step 2 — Pull posts by subreddit + search</h2>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/trudax~reddit-scraper-lite/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+    &quot;startUrls&quot;: [{&quot;url&quot;: &quot;https://www.reddit.com/r/smallbusiness/search/?q=looking%20for%20crm&amp;sort=new&quot;}],
+    &quot;maxItems&quot;: 100,
+    &quot;sort&quot;: &quot;new&quot;
+  }&#x27;</code></pre>
+<p>Fields: <code>title</code>, <code>body</code>, <code>subReddit</code>, <code>score</code>, <code>numberOfComments</code>, <code>createdAt</code>, <code>url</code>.</p>
+<h2>Step 3 — Intent filter</h2>
+<pre><code>from apify_client import ApifyClient
+
+INTENT = [&quot;looking for&quot;, &quot;recommend&quot;, &quot;alternative to&quot;, &quot;anyone use&quot;,
+          &quot;best tool&quot;, &quot;how do you&quot;, &quot;frustrated with&quot;]
+
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+run = client.actor(&quot;trudax/reddit-scraper-lite&quot;).call(run_input={
+    &quot;startUrls&quot;: [{&quot;url&quot;: &quot;https://www.reddit.com/r/sales/search/?q=crm&amp;sort=new&quot;}],
+    &quot;maxItems&quot;: 200,
+    &quot;sort&quot;: &quot;new&quot;,
+})
+
+for post in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    text = (post.get(&quot;title&quot;, &quot;&quot;) + &quot; &quot; + post.get(&quot;body&quot;, &quot;&quot;)).lower()
+    if any(k in text for k in INTENT):
+        print(post[&quot;createdAt&quot;], &quot;|&quot;, post[&quot;title&quot;][:80], &quot;|&quot;, post[&quot;url&quot;])</code></pre>
+<p>Run it on a schedule → every morning you get a list of people publicly asking for what you sell. Reply helpfully (not salesy — Reddit bans shills) and you have warm inbound for free.</p>
+<h2>Pro moves</h2>
+<ul><li>Track competitor names + "alternative to" → churn-risk intel.</li><li>r/smallbusiness, r/Entrepreneur, niche subs = buyer-heavy audiences.</li><li>Pull comments on recommendation threads → who recommends whom.</li></ul>
+<p>More tools: <a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a>. Skills: <code>npx skills add g4dr/apify-skills</code> (<a href="https://github.com/samm4dr/apify-skills">repo</a>).</p>
+<p><em>Which subreddits are you mining?</em></p>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> — skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
