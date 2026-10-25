@@ -1,0 +1,65 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrape LinkedIn Profiles at Scale: B2B Leads Without Sales Navigator</title>
+<meta name="description" content="Scrape LinkedIn Profiles at Scale: B2B Leads Without Sales Navigator">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Scrape LinkedIn Profiles at Scale: B2B Leads Without Sales Navigator</h1>
+
+<p>LinkedIn data is the backbone of B2B prospecting — titles, companies, emails, posts. Sales Navigator gives you search; Apify actors give you the export. The top actor (<code>harvestapi/linkedin-profile-scraper</code>) has <strong>82k users</strong> and doesn't even need cookies. Here's the pipeline.</p>
+<blockquote><p>🤖 <strong>Try it live</strong> — chat with a Poe bot that generates the exact pipeline for your ICP: <a href="https://poe.com/leadlistgenerator">Lead List Generator</a> · <a href="https://poe.com/jobpostingsminer">Job Postings Miner</a> · <a href="https://poe.com/socialleadfinder">Social Lead Finder</a> · <a href="https://poe.com/amazonproductminer">Amazon Product Miner</a> · <a href="https://poe.com/serpranktracker">SERP Rank Tracker</a></p></blockquote>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — HarvestAPI's no-cookie LinkedIn suite. Free monthly credits.</li><li><strong>Python</strong> — profiles → scored lead list.</li></ul>
+<h2>Step 1 — Token</h2>
+<p><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> → Settings → Integrations → <code>export APIFY_TOKEN=...</code></p>
+<h2>Step 2 — Search → profiles</h2>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/harvestapi~linkedin-profile-search/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+    &quot;searchQuery&quot;: &quot;VP Marketing SaaS&quot;,
+    &quot;locations&quot;: [&quot;United States&quot;],
+    &quot;maxItems&quot;: 200
+  }&#x27;</code></pre>
+<p>Then enrich each profile:</p>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/harvestapi~linkedin-profile-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{&quot;profileUrls&quot;: [&quot;https://www.linkedin.com/in/someone&quot;], &quot;findEmails&quot;: true}&#x27;</code></pre>
+<h2>Step 3 — Score for outreach</h2>
+<pre><code>from apify_client import ApifyClient
+
+ICP_TITLES = [&quot;vp marketing&quot;, &quot;head of growth&quot;, &quot;cmo&quot;, &quot;demand generation&quot;]
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+
+run = client.actor(&quot;harvestapi/linkedin-profile-search&quot;).call(run_input={
+    &quot;searchQuery&quot;: &quot;growth&quot;, &quot;locations&quot;: [&quot;United States&quot;], &quot;maxItems&quot;: 500,
+})
+
+hot = []
+for p in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    title = (p.get(&quot;headline&quot;) or &quot;&quot;).lower()
+    if any(t in title for t in ICP_TITLES):
+        hot.append({&quot;name&quot;: p.get(&quot;fullName&quot;), &quot;title&quot;: p.get(&quot;headline&quot;),
+                    &quot;company&quot;: p.get(&quot;companyName&quot;), &quot;url&quot;: p.get(&quot;linkedinUrl&quot;)})
+
+print(len(hot), &quot;ICP matches&quot;)</code></pre>
+<h2>The plays</h2>
+<ul><li><strong>SDR teams</strong> — search by title+industry → email-enrich → sequenced outreach. Cheaper than Sales Nav + ZoomInfo.</li><li><strong>Recruiters</strong> — posts scraper (<code>harvestapi/linkedin-profile-posts</code>, 42k users) → who's active, whose team is growing.</li><li><strong>Intel</strong> — competitor employees moving = churn or expansion signal.</li></ul>
+<h2>Useful actors</h2>
+<pre><code>| Actor | Job | Users |
+|---|---|---|
+| `harvestapi/linkedin-profile-scraper` | Profiles + emails, no cookies | 82.5k |
+| `dev_fusion/Linkedin-Profile-Scraper` | Mass profiles + email | 63.7k |
+| `harvestapi/linkedin-profile-search` | Search → profiles | 50.8k |
+| `harvestapi/linkedin-profile-posts` | Posts/activity data | 42.7k |</code></pre>
+<h2>More resources</h2>
+<ul><li><a href="https://github.com/samm4dr/apify-skills">apify-skills</a> — <code>apify-lead-scraper</code> skill runs LinkedIn pipelines from a prompt</li><li><a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a></li><li>Free credits: <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify signup</a></li></ul>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> — skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
