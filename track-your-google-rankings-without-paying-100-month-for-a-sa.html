@@ -1,0 +1,58 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Track Your Google Rankings Without Paying $100/Month for a SaaS</title>
+<meta name="description" content="Track Your Google Rankings Without Paying $100/Month for a SaaS">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Track Your Google Rankings Without Paying $100/Month for a SaaS</h1>
+<p>Rank trackers charge $50-150/month for what&#x27;s essentially a Google query on a schedule. Here&#x27;s the same thing in 30 lines of Python + an Apify actor — pay per SERP, own the pipeline.</p>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — <code>apify/google-search-scraper</code> returns clean SERP JSON. Free monthly credits.</li><li><strong>Your keywords</strong> — as many as you want, any country/language.</li></ul>
+<h2>Step 1 — Token</h2>
+<p><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> → Settings → Integrations → <code>export APIFY_TOKEN=...</code></p>
+<h2>Step 2 — Query the SERPs</h2>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/apify~google-search-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+    &quot;queries&quot;: &quot;best standing desk\nergonomic chair review\nmotorized desk&quot;,
+    &quot;maxPagesPerQuery&quot;: 2,
+    &quot;countryCode&quot;: &quot;us&quot;,
+    &quot;languageCode&quot;: &quot;en&quot;,
+    &quot;mobileResults&quot;: false
+  }&#x27;</code></pre>
+<h2>Step 3 — Extract your positions</h2>
+<pre><code>from apify_client import ApifyClient
+
+MY_DOMAIN = &quot;yoursite.com&quot;
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+
+run = client.actor(&quot;apify/google-search-scraper&quot;).call(run_input={
+    &quot;queries&quot;: &quot;\n&quot;.join([&quot;keyword one&quot;, &quot;keyword two&quot;, &quot;keyword three&quot;]),
+    &quot;maxPagesPerQuery&quot;: 2,
+    &quot;countryCode&quot;: &quot;us&quot;,
+})
+
+for item in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    term = item[&quot;searchQuery&quot;][&quot;term&quot;]
+    for r in item.get(&quot;organicResults&quot;, []):
+        if MY_DOMAIN in r.get(&quot;url&quot;, &quot;&quot;):
+            print(f&quot;{term} -&gt; position {r[&#x27;position&#x27;]} ({r[&#x27;url&#x27;]})&quot;)</code></pre>
+<p>Schedule it weekly → diff the datasets → rank movement report, for free.</p>
+<h2>Bonus: keyword research combo</h2>
+<p>Feed seed keywords into <code>apify/google-autocomplete-scraper</code> → hundreds of long-tail suggestions → re-run through the SERP scraper to gauge competition. Poor man&#x27;s Ahrefs that actually scales.</p>
+<h2>Local SEO</h2>
+<p><code>compass/google-maps-scraper</code> per city audits map-pack presence — who ranks, ratings, review counts. Combine with SERP positions for the full picture.</p>
+<h2>Watch your spend</h2>
+<p>1 query = 1 SERP page billed. <code>maxPagesPerQuery: 1-2</code> covers position tracking; go deeper only for competitor research.</p>
+<p>Full tooling list: <a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a>. Claude Code/Cursor users: <code>npx skills add g4dr/apify-skills</code> has an <code>apify-seo-serp</code> skill that runs all this from a prompt (<a href="https://github.com/samm4dr/apify-skills">repo</a>).</p>
+<p><em>What keywords are you tracking?</em></p>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> · skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
