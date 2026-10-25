@@ -1,0 +1,58 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrape Job Postings at Scale: Hiring Signals Are Buying Signals</title>
+<meta name="description" content="Scrape Job Postings at Scale: Hiring Signals Are Buying Signals">
+<style>
+body{max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a1a}
+a{color:#0066cc}code,pre{background:#f4f4f4;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+pre{padding:14px;overflow-x:auto}code{padding:2px 5px}pre code{padding:0}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+h1{line-height:1.25}.meta{color:#666;font-size:.9em}
+nav a{margin-right:14px}
+</style></head><body>
+<nav><a href="/">Scraping Playbook</a><a href="https://github.com/g4dr">GitHub</a><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify (free credits)</a></nav>
+<h1>Scrape Job Postings at Scale: Hiring Signals Are Buying Signals</h1>
+<p>Companies posting jobs are revealing exactly what they need — in real time. A company hiring &quot;SEO specialist&quot; needs SEO help. Five sales openings mean they want pipeline. Hiring a &quot;migration engineer&quot;? They need a dev agency.</p>
+<p>Here&#x27;s how to turn public job boards into a lead-gen machine using Apify actors — no scraper maintenance, no proxy bills.</p>
+<h2>The stack</h2>
+<ul><li><strong><a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a></strong> — ready-made actors for Google Jobs, Indeed, and LinkedIn. Free monthly credits included.</li><li><strong>Python + apify_client</strong> — 20 lines to a clean CSV.</li></ul>
+<h2>Step 1 — Token</h2>
+<p><a href="https://console.apify.com/sign-up?fpr=dx06p">Create an Apify account</a> → Console → Settings → Integrations → copy the API token → <code>export APIFY_TOKEN=...</code></p>
+<h2>Step 2 — Run the Google Jobs actor</h2>
+<pre><code>curl -X POST &quot;https://api.apify.com/v2/acts/apify~google-jobs-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+    &quot;queries&quot;: &quot;remote react developer&quot;,
+    &quot;countryCode&quot;: &quot;us&quot;,
+    &quot;maxPagesPerQuery&quot;: 2
+  }&#x27;</code></pre>
+<p>Output fields: <code>title</code>, <code>companyName</code>, <code>location</code>, <code>salary</code>, <code>description</code>, <code>applyUrl</code>, <code>postedAt</code>.</p>
+<h2>Step 3 — Hiring-signal filter</h2>
+<pre><code>from apify_client import ApifyClient
+
+client = ApifyClient(&quot;APIFY_TOKEN&quot;)
+run = client.actor(&quot;apify/google-jobs-scraper&quot;).call(run_input={
+    &quot;queries&quot;: &quot;seo specialist\ncontent writer\nppc manager&quot;,
+    &quot;countryCode&quot;: &quot;us&quot;,
+    &quot;maxPagesPerQuery&quot;: 1,
+})
+
+signals = {}
+for job in client.dataset(run[&quot;defaultDatasetId&quot;]).iterate_items():
+    company = job.get(&quot;companyName&quot;, &quot;&quot;)
+    signals.setdefault(company, []).append(job.get(&quot;title&quot;))
+
+# Companies hiring multiple roles = hot prospects
+for c, titles in signals.items():
+    if len(titles) &gt;= 2:
+        print(f&quot;{c}: {len(titles)} openings -&gt; {titles[:3]}&quot;)</code></pre>
+<h2>The lead-gen play</h2>
+<ol><li>Schedule the actor daily in Apify Console</li><li>Filter new postings per company</li><li>Enrich the company domain with <code>vdrmota/contact-info-scraper</code> (emails, socials)</li><li>Outreach: <em>&quot;Saw you&#x27;re hiring for X — we deliver that as a service today&quot;</em></li></ol>
+<p>Companies hiring are companies with budget. You&#x27;re not cold-calling — you&#x27;re showing up exactly when the pain is public.</p>
+<h2>Extras</h2>
+<p>More scrapers and proxies on my <a href="https://github.com/samm4dr/awesome-web-scraping">awesome-web-scraping</a> list. And if you use Claude Code/Cursor: <code>npx skills add g4dr/apify-skills</code> teaches your agent this whole pipeline — <a href="https://github.com/samm4dr/apify-skills">repo</a>.</p>
+<p>Dedupe on <code>(companyName, title)</code> — boards cross-post the same job everywhere. Cap <code>maxPagesPerQuery</code> at 1-3 to control spend.</p>
+<p><em>What niche are you scraping jobs for? Drop it below — I&#x27;ll share the run input.</em></p>
+<hr><p class="meta">Powered by <a href="https://console.apify.com/sign-up?fpr=dx06p">Apify</a> · skills: <a href="https://github.com/samm4dr/apify-skills">g4dr/apify-skills</a></p>
+<hr><p class="meta">Also from the network: <a href="https://aifordigitalmarketing.com">AI marketing tools</a> · <a href="https://barbellnearme.com">Barbell Near Me</a> · <a href="https://chineseattractions.com">Chinese Attractions</a> · <a href="https://healthy-weight.com">Healthy Weight</a> · <a href="https://stressfreehost.com">StressFree</a> · <a href="https://storage-miami.com">Storage Miami</a> · <a href="https://wecloseloans.com">WeCloseLoans</a> · <a href="https://mortgage-info.com">Mortgage Info</a> · <a href="https://passportsusa.com">Passports USA</a> · <a href="https://privatejetmonaco.com">Private Jet Monaco</a></p>
+</body></html>
